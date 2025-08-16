@@ -1,0 +1,45 @@
+{
+  "providers": {
+    "claude": {
+      "enabled": true,
+      "api_key": "CLAUDE_API_KEY",
+      "base_url": "https://api.anthropic.com",
+      "api_version": "2023-06-01"
+    },
+    "openai": {
+      "enabled": true,
+      "api_key": "OPENAI_API_KEY",
+      "base_url": "https://api.openai.com",
+      "organization": null
+    },
+    "azure": {
+      "enabled": false,
+      "api_key": "AZURE_OPENAI_API_KEY",
+      "endpoint": "AZURE_OPENAI_ENDPOINT",
+      "api_version": "2024-10-21"
+    }
+  },
+  "model_mapping": {
+    "gpt-4o": "openai",
+    "claude-3-5-sonnet": "claude"
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8000,
+    "log_level": "DEBUG",
+    "workers": 1
+  },
+  "features": {
+    "enable_streaming": true,
+    "enable_caching": false,
+    "enable_metrics": true,
+    "enable_rate_limiting": false,
+    "max_requests_per_minute": 100
+  },
+  "security": {
+    "enable_auth": false,
+    "api_key_header": "X-API-Key",
+    "allowed_origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+    "enable_cors": true
+  }
+}

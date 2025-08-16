@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Proxy - Model Interface</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">LLM Proxy Interface</h1>
+            <p class="text-gray-600">Test and interact with different language models</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Chat Interface -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800">Chat Completion</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Model</label>
+                        <select id="chatModel" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                            <option value="text-embedding-ada-002">Text Embedding Ada-002</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                        <textarea id="chatMessage" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your message..."></textarea>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="chatStream" class="mr-2">
+                            <span class="text-sm text-gray-700">Enable streaming</span>
+                        </label>
+                    </div>
+
+                    <button onclick="sendChatMessage()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
+                        Send Message
+                    </button>
+                </div>
+
+                <div id="chatResponse" class="mt-4 p-4 bg-gray-50 rounded-md hidden">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Response:</h3>
+                    <div id="chatOutput" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
+                </div>
+            </div>
+
+            <!-- Embeddings Interface -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800">Text Embeddings</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Model</label>
+                        <select id="embedModel" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="text-embedding-ada-002">Text Embedding Ada-002</option>
+                            <option value="text-embedding-3-small">Text Embedding 3 Small</option>
+                            <option value="text-embedding-3-large">Text Embedding 3 Large</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Input Text</label>
+                        <textarea id="embedText" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter text to embed..."></textarea>
+                    </div>
+
+                    <button onclick="createEmbeddings()" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-200">
+                        Create Embeddings
+                    </button>
+                </div>
+
+                <div id="embedResponse" class="mt-4 p-4 bg-gray-50 rounded-md hidden">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Embeddings:</h3>
+                    <div id="embedOutput" class="text-sm text-gray-800"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Models -->
+        <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Available Models</h2>
+            <div id="modelsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="text-center py-4">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p class="text-sm text-gray-600 mt-2">Loading models...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Usage -->
+        <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">API Usage</h2>
+            <div class="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-sm">
+                <div>POST /v1/chat/completions</div>
+                <div>POST /v1/embeddings</div>
+                <div>GET /v1/models</div>
+                <div>GET /health</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

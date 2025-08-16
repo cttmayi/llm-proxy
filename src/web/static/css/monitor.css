@@ -1,0 +1,230 @@
+/* API Monitor Styles */
+
+.api-call-item {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background-color 0.2s;
+}
+
+.api-call-item:hover {
+    background-color: #f9fafb;
+}
+
+.api-call-item:last-child {
+    border-bottom: none;
+}
+
+.status-success {
+    border-left: 4px solid #10b981;
+}
+
+.status-error {
+    border-left: 4px solid #ef4444;
+}
+
+.method-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.method-POST {
+    background-color: #10b981;
+    color: white;
+}
+
+.method-GET {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.method-PUT {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.method-DELETE {
+    background-color: #ef4444;
+    color: white;
+}
+
+.json-viewer {
+    background-color: #1f2937;
+    color: #f9fafb;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.875rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.json-key {
+    color: #60a5fa;
+}
+
+.json-string {
+    color: #34d399;
+}
+
+.json-number {
+    color: #fbbf24;
+}
+
+.json-boolean {
+    color: #f472b6;
+}
+
+.json-null {
+    color: #9ca3af;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(59, 130, 246, 0.3);
+    border-radius: 50%;
+    border-top-color: #3b82f6;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.provider-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+}
+
+.provider-claude {
+    background-color: #8b5cf6;
+    color: white;
+}
+
+.provider-openai {
+    background-color: #10b981;
+    color: white;
+}
+
+.provider-azure {
+    background-color: #0078d4;
+    color: white;
+}
+
+.provider-unknown {
+    background-color: #6b7280;
+    color: white;
+}
+
+.timestamp {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.duration {
+    font-weight: 600;
+    color: #059669;
+}
+
+.duration-slow {
+    color: #dc2626;
+}
+
+.expandable-content {
+    max-height: 200px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.expandable-content.expanded {
+    max-height: none;
+}
+
+.expand-button {
+    color: #3b82f6;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.expand-button:hover {
+    text-decoration: underline;
+}
+
+/* Full height layout */
+html, body {
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure proper flex layout */
+.h-screen {
+    height: 100vh;
+}
+
+/* Remove max-height restrictions */
+#apiCalls {
+    max-height: none !important;
+}
+
+/* Ensure flex container works properly */
+.flex-1 {
+    flex: 1 1 0%;
+}
+
+.min-h-0 {
+    min-height: 0;
+}
+
+.message-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.role-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    display: block;
+}
+
+.whitespace-pre-wrap {
+    white-space: pre-wrap !important;
+    word-break: break-word;
+}
+
+.message-content {
+    white-space: pre-wrap !important;
+    word-break: break-word;
+    display: block;
+}

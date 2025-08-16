@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Proxy API监控器</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/static/css/monitor.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="flex flex-col h-screen px-4 py-4">
+        <header class="text-center mb-4">
+            <h1 class="text-3xl font-bold text-gray-800 mb-1">LLM Proxy API监控器</h1>
+            <p class="text-gray-600">实时显示所有API调用和模型交互数据</p>
+        </header>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+            <div class="bg-white rounded-lg shadow p-3">
+                <h3 class="text-xs font-medium text-gray-500">总调用次数</h3>
+                <p class="text-lg font-bold text-gray-900" id="totalCalls">0</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-3">
+                <h3 class="text-xs font-medium text-gray-500">错误率</h3>
+                <p class="text-lg font-bold text-red-600" id="errorRate">0%</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-3">
+                <h3 class="text-xs font-medium text-gray-500">平均响应时间</h3>
+                <p class="text-lg font-bold text-blue-600" id="avgDuration">0ms</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-3">
+                <h3 class="text-xs font-medium text-gray-500">活跃模型</h3>
+                <p class="text-lg font-bold text-green-600" id="activeModels">0</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-lg shadow p-3 mb-2">
+            <div class="flex flex-wrap gap-2 items-center">
+                <button onclick="startAutoRefresh()" id="startBtn" class="bg-green-600 text-white px-3 py-1.5 text-sm rounded hover:bg-green-700">
+                    开始自动刷新
+                </button>
+                <button onclick="stopAutoRefresh()" id="stopBtn" class="bg-red-600 text-white px-3 py-1.5 text-sm rounded hover:bg-red-700 hidden">
+                    停止自动刷新
+                </button>
+                <button onclick="clearLogs()" class="bg-gray-600 text-white px-3 py-1.5 text-sm rounded hover:bg-gray-700">
+                    清除日志
+                </button>
+                <select id="filterModel" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                    <option value="">所有模型</option>
+                </select>
+                <select id="filterStatus" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                    <option value="">所有状态</option>
+                    <option value="success">成功</option>
+                    <option value="error">错误</option>
+                </select>
+                <label class="flex items-center text-sm">
+                    <input type="checkbox" id="autoScroll" checked class="mr-1">
+                    自动滚动
+                </label>
+            </div>
+        </div>
+
+        <!-- API Calls List -->
+        <div class="bg-white rounded-lg shadow flex-1 flex flex-col min-h-0">
+            <div class="px-4 py-3 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800">API调用日志</h2>
+            </div>
+            <div id="apiCalls" class="flex-1 overflow-y-auto">
+                <div class="text-center py-8 text-gray-500">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    等待API调用数据...
+                </div>
+            </div>
+        </div>
+
+        <!-- Call Detail Modal -->
+        <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
+                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold">调用详情</h3>
+                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="modalContent" class="p-6">
+                        <!-- Content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/monitor.js"></script>
+</body>
+</html>
