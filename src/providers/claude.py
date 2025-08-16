@@ -9,6 +9,7 @@ import httpx
 from pydantic import BaseModel
 
 from .base import BaseProvider, ChatMessage, ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, ProviderError, ModelInfo
+from ..utils.cache import async_cache
 
 
 class ClaudeProvider(BaseProvider):
@@ -139,6 +140,7 @@ class ClaudeProvider(BaseProvider):
             self.logger.error(f"Unexpected error in Claude streaming: {str(e)}")
             yield f"data: {json.dumps({'error': {'message': str(e), 'type': 'internal_error'}})}\n\n"
     
+    @async_cache(ttl=300)
     async def list_models(self) -> List[ModelInfo]:
         """List available models from Claude."""
         return [

@@ -8,6 +8,7 @@ from typing import Dict, Any, AsyncGenerator, List
 import httpx
 
 from .base import BaseProvider, ModelInfo, ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, ProviderError
+from ..utils.cache import async_cache
 
 
 class OpenAIProvider(BaseProvider):
@@ -45,6 +46,7 @@ class OpenAIProvider(BaseProvider):
         
         return headers
     
+    @async_cache(ttl=300)
     async def list_models(self) -> List[ModelInfo]:
         """List available models from OpenAI."""
         try:
