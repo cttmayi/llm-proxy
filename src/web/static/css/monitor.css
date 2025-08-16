@@ -96,19 +96,16 @@
     }
 }
 
-.fade-in {
-    animation: fadeIn 0.3s ease-in;
+.api-call-item {
+    animation: none;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.fade-in {
+    animation: none;
+}
+
+.messages-table {
+    transition: none;
 }
 
 .provider-badge {
@@ -227,4 +224,45 @@ body {
     white-space: pre-wrap !important;
     word-break: break-word;
     display: block;
+}
+
+.messages-table {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.messages-table table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.messages-table th,
+.messages-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+}
+
+.messages-table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+}
+
+.messages-table td {
+    vertical-align: top;
+}
+
+.messages-table tr:hover {
+    background-color: #f9fafb;
+}
+
+.messages-table .truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.messages-table .max-w-md {
+    max-width: 56em;
 }

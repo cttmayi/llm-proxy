@@ -29,13 +29,33 @@ async function loadInitialData() {
     ]);
 }
 
-// Load API calls
+// Load API calls with deep comparison to prevent unnecessary updates
 async function loadAPICalls() {
     try {
         const response = await fetch(`${API_BASE_URL}/web/api/calls?limit=50`);
         const data = await response.json();
         
         if (response.ok) {
+            // Quick check: compare lengths first
+            if (data.calls.length === currentCalls.length) {
+                // Deep comparison of key fields only
+                const hasChanges = data.calls.some((newCall, index) => {
+                    const oldCall = currentCalls[index];
+                    if (!oldCall) return true;
+                    
+                    // Compare essential fields
+                    return newCall.id !== oldCall.id ||
+                           newCall.timestamp !== oldCall.timestamp ||
+                           newCall.status_code !== oldCall.status_code ||
+                           newCall.duration_ms !== oldCall.duration_ms ||
+                           newCall.model !== oldCall.model;
+                });
+                
+                if (!hasChanges) {
+                    return; // No changes, skip update
+                }
+            }
+            
             currentCalls = data.calls;
             renderAPICalls();
         }
@@ -97,25 +117,33 @@ function updateStats(stats) {
         Object.keys(stats.model_stats || {}).length;
 }
 
-// Render API calls
+// Render API calls with content comparison to prevent flickering
+let lastRenderedHTML = '';
+
 function renderAPICalls() {
     const container = document.getElementById('apiCalls');
     
     if (currentCalls.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-8 text-gray-500">
-                暂无API调用数据
-            </div>
-        `;
+        const emptyHTML = '<div class="text-center py-8 text-gray-500">暂无API调用数据</div>';
+        if (lastRenderedHTML !== emptyHTML) {
+            container.innerHTML = emptyHTML;
+            lastRenderedHTML = emptyHTML;
+        }
         return;
     }
     
     const filteredCalls = filterCalls();
-    container.innerHTML = filteredCalls.map(call => renderAPICall(call)).join('');
+    const newHTML = filteredCalls.map(call => renderAPICall(call)).join('');
     
-    // Scroll to bottom if auto-scroll is enabled
-    if (document.getElementById('autoScroll').checked) {
-        container.scrollTop = container.scrollHeight;
+    // Only update if content has actually changed
+    if (newHTML !== lastRenderedHTML) {
+        container.innerHTML = newHTML;
+        lastRenderedHTML = newHTML;
+        
+        // Scroll to bottom if auto-scroll is enabled
+        if (document.getElementById('autoScroll').checked) {
+            container.scrollTop = container.scrollHeight;
+        }
     }
 }
 
@@ -138,51 +166,57 @@ function renderAPICall(call) {
     
     const time = new Date(call.timestamp * 1000).toLocaleTimeString('zh-CN');
     
-// Extract all messages from request
-    let allMessages = [];
+// Extract all messages from request and response
+    let messagesTable = '';
     
+    let messages = [];
+    
+    // Extract request messages
     if (call.request_body && call.request_body.messages && call.request_body.messages.length > 0) {
-        call.request_body.messages.forEach(msg => {
-            if (msg.content) {
-                let content = msg.content;
-                if (content.length > 60) {
-                    content = content.substring(0, 60) + '...';
-                }
-                allMessages.push({
-                    role: msg.role || 'user',
-                    content: content
-                });
-            }
-        });
+        messages = call.request_body.messages.map(msg => ({
+            role: msg.role || 'user',
+            content: msg.content || ''
+        }));
     }
     
     // Extract response messages
     if (call.response_body && call.response_body.choices && call.response_body.choices.length > 0) {
-        call.response_body.choices.forEach(choice => {
-            if (choice.message && choice.message.content) {
-                let content = choice.message.content;
-                // if (content.length > 60) {
-                //     content = content.substring(0, 60) + '...';
-                // }
-                allMessages.push({
-                    role: choice.message.role || 'assistant',
-                    content: content
-                });
-            }
-        });
+        const responseMessages = call.response_body.choices.map(choice => ({
+            role: choice.message?.role || 'assistant',
+            content: choice.message?.content || choice.text || ''
+        }));
+        messages = messages.concat(responseMessages);
     }
     
-    let messageContent = '';
-    if (allMessages.length > 0) {
-        messageContent = `
-            <div class="text-sm text-gray-800 bg-white border-l-4 border-purple-500 p-3 rounded">
-                ${allMessages.map(msg => `<div class="mb-1"><strong>${msg.role}:</strong><br><span class="message-content">${escapeHtml(msg.content)}</span></div>`).join('')}
+    if (messages.length > 0) {
+        messagesTable = `
+            <div class="messages-table mt-2">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium text-gray-700">Role</th>
+                            <th class="px-3 py-2 text-left font-medium text-gray-700">Content</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${messages.map(msg => `
+                            <tr>
+                                <td class="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">${escapeHtml(msg.role)}</td>
+                                <td class="px-3 py-2 text-xs text-gray-700">
+                                    <div class="max-w-md truncate" title="${escapeHtml(msg.content).replace(/\n\n/g, '\n')}">
+                                        ${escapeHtml(msg.content)}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         `;
     }
     
     return `
-        <div class="api-call-item ${statusClass} p-4 fade-in" data-id="${call.id}">
+        <div class="api-call-item ${statusClass} p-4" data-id="${call.id}">
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center space-x-3">
                     <span class="method-badge ${methodClass}">${call.method}</span>
@@ -201,7 +235,7 @@ function renderAPICall(call) {
                 </div>
             </div>
             
-            ${messageContent}
+            ${messagesTable}
             
             ${call.error ? `<div class="text-sm text-red-600 mb-2">${call.error}</div>` : ''}
         </div>
@@ -266,20 +300,38 @@ async function showDetail(callId) {
             ${inputMessages.length > 0 || outputMessages.length > 0 ? `
                 <div>
                     <h4 class="font-semibold text-gray-700 mb-2">对话内容</h4>
-                    <div class="bg-white border-l-4 border-green-500 p-4 rounded">
+                    <div class="bg-white border rounded">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Role</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Content</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
                         ${inputMessages.map(msg => `
-                            <div class="mb-2">
-                                <strong>${msg.role}:</strong>
-                                <div class="role-content mt-1 text-gray-700">${escapeHtml(msg.content)}</div>
-                            </div>
+                            <tr>
+                                <td class="px-4 py-2 text-sm font-medium text-gray-900">${escapeHtml(msg.role)}</td>
+                                <td class="px-4 py-2 text-sm text-gray-700">
+                                    <div class="max-w-xl" style="white-space: pre-line; max-height: 200px; overflow-y: auto;">
+                                        ${escapeHtml(msg.content).replace(/\n\n/g, '\n').replace(/\n/g, ' ')}
+                                    </div>
+                                </td>
+                            </tr>
                         `).join('')}
                         ${outputMessages.map(msg => `
-                            <div class="mb-2">
-                                <strong>${msg.role}:</strong>
-                                <div class="role-content mt-1 text-gray-700">${escapeHtml(msg.content)}</div>
-                            </div>
+                            <tr>
+                                <td class="px-4 py-2 text-sm font-medium text-gray-900">${escapeHtml(msg.role)}</td>
+                                <td class="px-4 py-2 text-sm text-gray-700">
+                                    <div class="max-w-xl" style="white-space: pre-line; max-height: 200px; overflow-y: auto;">
+                                        ${escapeHtml(msg.content).replace(/\n\n/g, '\n').replace(/\n/g, ' ')}
+                                    </div>
+                                </td>
+                            </tr>
                         `).join('')}
-                    </div>
+                    </tbody>
+                </table>
+            </div>
                 </div>
             ` : ''}
             
@@ -347,16 +399,32 @@ function getProviderFromModel(model) {
     return 'unknown';
 }
 
-// Auto-refresh functions
+// Auto-refresh functions with debouncing
+let lastUpdateTime = 0;
+let updateInProgress = false;
+
 function startAutoRefresh() {
     if (autoRefreshInterval) return;
     
     document.getElementById('startBtn').classList.add('hidden');
     document.getElementById('stopBtn').classList.remove('hidden');
     
-    autoRefreshInterval = setInterval(() => {
-        loadAPICalls();
-        loadStats();
+    autoRefreshInterval = setInterval(async () => {
+        if (updateInProgress) return;
+        
+        const now = Date.now();
+        if (now - lastUpdateTime >= 2000) {
+            updateInProgress = true;
+            try {
+                await Promise.all([
+                    loadAPICalls(),
+                    loadStats()
+                ]);
+                lastUpdateTime = now;
+            } finally {
+                updateInProgress = false;
+            }
+        }
     }, 2000);
 }
 

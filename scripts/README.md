@@ -163,6 +163,6 @@ These scripts can be integrated into CI/CD pipelines:
 # GitHub Actions example
 - name: Test LLM Proxy
   run: |
-    ./scripts/quick_test.sh
-    ./scripts/test_models.sh
+    ./scripts/run_test_quick.sh
+    ./scripts/run_test_models.sh
 ```

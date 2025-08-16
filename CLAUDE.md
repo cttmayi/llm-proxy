@@ -21,10 +21,10 @@ pytest tests/integration -v             # Integration tests only
 pytest tests/ --cov=src --cov-report=html  # With coverage
 
 # Quick functionality test
-./scripts/quick_test.sh
+./scripts/run_test_quick.sh
 
 # Comprehensive testing
-./scripts/test_models.sh
+./scripts/run_test_models.sh
 ```
 
 ## Architecture Overview
