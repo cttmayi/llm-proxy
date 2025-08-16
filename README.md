@@ -129,6 +129,47 @@ response = client.chat.completions.create(
 )
 ```
 
+### Claude Native Messages
+
+The `/messages` endpoint provides native Claude API compatibility for Claude models:
+
+```bash
+# Basic Claude message
+curl -X POST http://localhost:8000/v1/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-5-sonnet",
+    "messages": [
+      {"role": "user", "content": "Hello, Claude!"}
+    ],
+    "max_tokens": 1024
+  }'
+
+# Streaming Claude message
+curl -X POST http://localhost:8000/v1/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-5-sonnet",
+    "messages": [
+      {"role": "user", "content": "Tell me a story"}
+    ],
+    "max_tokens": 2048,
+    "stream": true
+  }'
+
+# Claude with system prompt
+curl -X POST http://localhost:8000/v1/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-5-sonnet",
+    "messages": [
+      {"role": "user", "content": "What is the capital of France?"}
+    ],
+    "max_tokens": 512,
+    "temperature": 0.7
+  }'
+```
+
 ### Streaming Responses
 
 ```bash
