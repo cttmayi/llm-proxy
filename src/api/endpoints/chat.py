@@ -49,45 +49,9 @@ router = APIRouter(prefix="/v1", tags=["chat"])
 def create_chat_router(provider_factory: ProviderFactory) -> APIRouter:
     """Create chat endpoints with provider factory."""
     
-    @router.post("/chat/completions", response_model=ChatCompletionResponse)
-    async def create_chat_completion(request: ChatCompletionRequest):
-        """Create a chat completion."""
-        try:
-            provider = provider_factory.get_provider_for_model(request.model)
-            
-            chat_request = ChatRequest(
-                model=request.model,
-                messages=[ChatMessage(role=msg["role"], content=msg["content"]) for msg in request.messages],
-                max_tokens=request.max_tokens,
-                temperature=request.temperature,
-                stream=False,
-                top_p=request.top_p,
-                frequency_penalty=request.frequency_penalty,
-                presence_penalty=request.presence_penalty
-            )
-            
-            response = await provider.chat_completion(chat_request)
-
-            return ChatCompletionResponse(
-                id=response.id,
-                object=response.object,
-                created=response.created,
-                model=response.model,
-                choices=response.choices,
-                usage=response.usage
-            )
-            
-        except ProviderError as e:
-            raise HTTPException(status_code=e.status_code, detail=e.message)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-    
     @router.post("/chat/completions")
-    async def create_chat_completion_stream(request: ChatCompletionRequest):
-        """Create a streaming chat completion."""
-        if not request.stream:
-            return await create_chat_completion(request)
-        
+    async def create_chat_completion(request: ChatCompletionRequest):
+        """Create a chat completion (streaming or non-streaming based on request.stream)."""
         try:
             provider = provider_factory.get_provider_for_model(request.model)
             
@@ -96,25 +60,37 @@ def create_chat_router(provider_factory: ProviderFactory) -> APIRouter:
                 messages=[ChatMessage(role=msg["role"], content=msg["content"]) for msg in request.messages],
                 max_tokens=request.max_tokens,
                 temperature=request.temperature,
-                stream=True,
+                stream=request.stream,
                 top_p=request.top_p,
                 frequency_penalty=request.frequency_penalty,
                 presence_penalty=request.presence_penalty
             )
             
-            async def generate_stream() -> AsyncGenerator[str, None]:
-                async for chunk in provider.chat_completion_stream(chat_request):
-                    yield chunk
-            
-            return StreamingResponse(
-                generate_stream(),
-                media_type="text/plain",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "Content-Type": "text/plain; charset=utf-8"
-                }
-            )
+            if request.stream:
+                async def generate_stream() -> AsyncGenerator[str, None]:
+                    async for chunk in provider.chat_completion_stream(chat_request):
+                        yield chunk
+                
+                return StreamingResponse(
+                    generate_stream(),
+                    media_type="text/event-stream",
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                        "Content-Type": "text/event-stream; charset=utf-8",
+                        "X-Accel-Buffering": "no"
+                    }
+                )
+            else:
+                response = await provider.chat_completion(chat_request)
+                return ChatCompletionResponse(
+                    id=response.id,
+                    object=response.object,
+                    created=response.created,
+                    model=response.model,
+                    choices=response.choices,
+                    usage=response.usage
+                )
             
         except ProviderError as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -149,11 +125,12 @@ def create_chat_router(provider_factory: ProviderFactory) -> APIRouter:
                 
                 return StreamingResponse(
                     generate_stream(),
-                    media_type="text/plain",
+                    media_type="text/event-stream",
                     headers={
                         "Cache-Control": "no-cache",
                         "Connection": "keep-alive",
-                        "Content-Type": "text/plain; charset=utf-8"
+                        "Content-Type": "text/event-stream; charset=utf-8",
+                        "X-Accel-Buffering": "no"
                     }
                 )
             else:

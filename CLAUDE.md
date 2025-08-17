@@ -4,17 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Quick Start Commands
 
-```bash
-# Setup development environment
-./scripts/setup.sh
-
 # Run the server
-source .venv/bin/activate
-python src/main.py --config config/config.json
-
-# Run with environment variables only
-source .venv/bin/activate
-python src/main.py
+./scripts/run_server.sh
 
 # Run tests
 ./scripts/run_tests.sh
@@ -80,16 +71,3 @@ This is a **unified API proxy** that provides a single interface to multiple LLM
 - **Integration tests**: Real API tests in `tests/integration/`
 - **Test markers**: `@pytest.mark.unit`, `@pytest.mark.integration`
 - **Async testing**: pytest-asyncio with `asyncio_mode = auto`
-
-### Environment Setup
-
-Required environment variables for providers:
-- `CLAUDE_API_KEY` - Anthropic API key
-- `OPENAI_API_KEY` - OpenAI API key
-- `AZURE_OPENAI_API_KEY` - Azure OpenAI key
-- `AZURE_OPENAI_ENDPOINT` - Azure endpoint URL
-
-Optional server settings:
-- `LLM_PROXY_HOST` (default: 0.0.0.0)
-- `LLM_PROXY_PORT` (default: 8000)
-- `LLM_PROXY_LOG_LEVEL` (default: INFO)

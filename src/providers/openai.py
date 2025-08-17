@@ -5,7 +5,9 @@ import json
 import time
 import uuid
 from typing import Dict, Any, AsyncGenerator, List
-import httpx
+import asyncio
+import openai
+from openai import AsyncOpenAI
 
 from .base import BaseProvider, ModelInfo, ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, ProviderError
 from ..utils.cache import async_cache
@@ -14,65 +16,55 @@ from ..utils.cache import async_cache
 class OpenAIProvider(BaseProvider):
     """OpenAI API provider."""
     
-    def __init__(self, config: Dict[str, Any], http_client: httpx.AsyncClient):
+    def __init__(self, config: Dict[str, Any], http_client=None):
         super().__init__(config, http_client)
         self.api_key = config.get('api_key')
-        self.base_url = config.get('base_url', 'https://api.openai.com')
+        self.base_url = config.get('base_url')
         self.organization = config.get('organization')
         
         if not self.api_key:
             raise ProviderError("OpenAI API key is required", provider="openai")
-    
-    def _build_url(self, endpoint: str) -> str:
-        """Build proper URL by handling both cases where base_url ends with /v1 or not."""
-        base_url = self.base_url.rstrip('/')
-        endpoint = endpoint.lstrip('/')
         
-        # If base_url already ends with /v1, don't add another /v1
-        if base_url.endswith('/v1'):
-            return f"{base_url}/{endpoint}"
-        else:
-            return f"{base_url}/v1/{endpoint}"
+        # Initialize OpenAI client
+        client_kwargs = {
+            'api_key': self.api_key,
+        }
+        
+        if self.base_url:
+            client_kwargs['base_url'] = self.base_url
+            
+        if self.organization:
+            client_kwargs['organization'] = self.organization
+            
+        self.client = AsyncOpenAI(**client_kwargs)
     
     def get_headers(self) -> Dict[str, str]:
         """Get headers for OpenAI API calls."""
-        headers = super().get_headers()
-        headers.update({
-            'Authorization': f'Bearer {self.api_key}',
-        })
-        
-        if self.organization:
-            headers['OpenAI-Organization'] = self.organization
-        
-        return headers
+        return super().get_headers()
     
     @async_cache(ttl=300)
     async def list_models(self) -> List[ModelInfo]:
         """List available models from OpenAI."""
         try:
-            url = self._build_url('models')
-            response = await self.http_client.get(
-                url,
-                headers=self.get_headers(),
-                timeout=10.0
-            )
-            response.raise_for_status()
+            response = await self.client.models.list()
             
-            data = response.json()
             models = []
-            
-            for model_data in data.get('data', []):
+            for model_data in response.data:
                 models.append(ModelInfo(
-                    id=model_data['id'],
-                    created=model_data.get('created', int(time.time())),
-                    owned_by=model_data.get('owned_by', 'openai'),
+                    id=model_data.id,
+                    created=getattr(model_data, 'created', int(time.time())),
+                    owned_by=getattr(model_data, 'owned_by', 'openai'),
                     provider="openai"
                 ))
             
             return models
             
-        except httpx.HTTPError as e:
-            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.response.status_code if hasattr(e, 'response') else 500, provider="openai")
+        except openai.APIStatusError as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.status_code, provider="openai")
+        except openai.APIConnectionError as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
+        except Exception as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
     
     def is_model_supported(self, model: str) -> bool:
         """Check if model is supported by OpenAI."""
@@ -128,39 +120,57 @@ class OpenAIProvider(BaseProvider):
             for msg in request.messages
         ])
         
-        payload = {
+        # Build request parameters
+        chat_params = {
             'model': request.model,
             'messages': messages,
         }
         
         if request.max_tokens:
-            payload['max_tokens'] = request.max_tokens
+            chat_params['max_tokens'] = request.max_tokens
         
         if request.temperature is not None:
-            payload['temperature'] = max(0.0, min(2.0, request.temperature))
+            chat_params['temperature'] = max(0.0, min(2.0, request.temperature))
         
         if request.top_p is not None:
-            payload['top_p'] = max(0.0, min(1.0, request.top_p))
+            chat_params['top_p'] = max(0.0, min(1.0, request.top_p))
         
         if request.frequency_penalty is not None:
-            payload['frequency_penalty'] = max(-2.0, min(2.0, request.frequency_penalty))
+            chat_params['frequency_penalty'] = max(-2.0, min(2.0, request.frequency_penalty))
         
         if request.presence_penalty is not None:
-            payload['presence_penalty'] = max(-2.0, min(2.0, request.presence_penalty))
+            chat_params['presence_penalty'] = max(-2.0, min(2.0, request.presence_penalty))
         
         try:
-            response = await self.http_client.post(
-                self._build_url('chat/completions'),
-                headers=self.get_headers(),
-                json=payload,
-                timeout=30.0
+            response = await self.client.chat.completions.create(**chat_params)
+            
+            # Convert OpenAI response to our ChatResponse format
+            return ChatResponse(
+                id=response.id,
+                object=response.object,
+                created=response.created,
+                model=response.model,
+                choices=[{
+                    'index': choice.index,
+                    'message': {
+                        'role': choice.message.role,
+                        'content': choice.message.content
+                    },
+                    'finish_reason': choice.finish_reason
+                } for choice in response.choices],
+                usage={
+                    'prompt_tokens': response.usage.prompt_tokens,
+                    'completion_tokens': response.usage.completion_tokens,
+                    'total_tokens': response.usage.total_tokens
+                }
             )
-            response.raise_for_status()
             
-            return ChatResponse(**response.json())
-            
-        except httpx.HTTPError as e:
-            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.response.status_code if hasattr(e, 'response') else 500, provider="openai")
+        except openai.APIStatusError as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.status_code, provider="openai")
+        except openai.APIConnectionError as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
+        except Exception as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
     
     async def chat_completion_stream(self, request: ChatRequest) -> AsyncGenerator[str, None]:
         """Generate streaming chat completion using OpenAI API."""
@@ -172,76 +182,120 @@ class OpenAIProvider(BaseProvider):
             for msg in request.messages
         ])
         
-        payload = {
+        # Build request parameters
+        chat_params = {
             'model': request.model,
             'messages': messages,
             'stream': True,
         }
         
         if request.max_tokens:
-            payload['max_tokens'] = request.max_tokens
+            chat_params['max_tokens'] = request.max_tokens
         
         if request.temperature is not None:
-            payload['temperature'] = max(0.0, min(2.0, request.temperature))
+            chat_params['temperature'] = max(0.0, min(2.0, request.temperature))
         
         if request.top_p is not None:
-            payload['top_p'] = max(0.0, min(1.0, request.top_p))
+            chat_params['top_p'] = max(0.0, min(1.0, request.top_p))
         
         if request.frequency_penalty is not None:
-            payload['frequency_penalty'] = max(-2.0, min(2.0, request.frequency_penalty))
+            chat_params['frequency_penalty'] = max(-2.0, min(2.0, request.frequency_penalty))
         
         if request.presence_penalty is not None:
-            payload['presence_penalty'] = max(-2.0, min(2.0, request.presence_penalty))
+            chat_params['presence_penalty'] = max(-2.0, min(2.0, request.presence_penalty))
         
         try:
-            async with self.http_client.stream(
-                'POST',
-                self._build_url('chat/completions'),
-                headers=self.get_headers(),
-                json=payload,
-                timeout=30.0
-            ) as response:
-                response.raise_for_status()
+            stream = await self.client.chat.completions.create(**chat_params)
+            
+            async for chunk in stream:
+                # Convert chunk to SSE format
+                if chunk.choices and chunk.choices[0].delta is not None:
+                    data = {
+                        'id': chunk.id,
+                        'object': chunk.object,
+                        'created': chunk.created,
+                        'model': chunk.model,
+                        'choices': [{
+                            'index': choice.index,
+                            'delta': {
+                                'role': choice.delta.role,
+                                'content': choice.delta.content
+                            } if choice.delta else {},
+                            'finish_reason': choice.finish_reason
+                        } for choice in chunk.choices]
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
                 
-                async for line in response.aiter_lines():
-                    if line.strip():
-                        yield line + "\n"
+                # Handle final chunk with usage
+                if hasattr(chunk, 'usage') and chunk.usage:
+                    data = {
+                        'id': chunk.id,
+                        'object': chunk.object,
+                        'created': chunk.created,
+                        'model': chunk.model,
+                        'choices': [{
+                            'index': choice.index,
+                            'delta': {},
+                            'finish_reason': choice.finish_reason
+                        } for choice in chunk.choices],
+                        'usage': {
+                            'prompt_tokens': chunk.usage.prompt_tokens,
+                            'completion_tokens': chunk.usage.completion_tokens,
+                            'total_tokens': chunk.usage.total_tokens
+                        }
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+                    yield "data: [DONE]\n\n"
                 
-        except httpx.HTTPError as e:
-            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.response.status_code if hasattr(e, 'response') else 500, provider="openai")
+        except openai.APIStatusError as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.status_code, provider="openai")
+        except openai.APIConnectionError as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
+        except Exception as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
     
     async def create_embeddings(self, request: EmbeddingRequest) -> EmbeddingResponse:
         """Create embeddings using OpenAI API."""
         if not self.is_model_supported(request.model):
             raise ProviderError(f"Model {request.model} not supported by OpenAI", provider="openai")
         
-        payload = {
-            'model': request.model,
-            'input': request.input,
-        }
-        
         try:
-            response = await self.http_client.post(
-                self._build_url('embeddings'),
-                headers=self.get_headers(),
-                json=payload,
-                timeout=30.0
+            response = await self.client.embeddings.create(
+                model=request.model,
+                input=request.input
             )
-            response.raise_for_status()
             
-            return EmbeddingResponse(**response.json())
+            # Convert OpenAI response to our EmbeddingResponse format
+            return EmbeddingResponse(
+                object=response.object,
+                data=[{
+                    'object': embedding.object,
+                    'embedding': embedding.embedding,
+                    'index': embedding.index
+                } for embedding in response.data],
+                model=response.model,
+                usage={
+                    'prompt_tokens': response.usage.prompt_tokens,
+                    'total_tokens': response.usage.total_tokens
+                }
+            )
             
-        except httpx.HTTPError as e:
-            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.response.status_code if hasattr(e, 'response') else 500, provider="openai")
+        except openai.APIStatusError as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.status_code, provider="openai")
+        except openai.APIConnectionError as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
+        except Exception as e:
+            raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
     
     async def health_check(self) -> bool:
         """Check OpenAI API health."""
         try:
-            response = await self.http_client.get(
-                self._build_url('models'),
-                headers=self.get_headers(),
-                timeout=10.0
-            )
-            return response.status_code == 200
+            await self.client.models.list()
+            return True
         except Exception:
             return False
+    
+    async def close(self):
+        """Clean up resources."""
+        if self.client:
+            await self.client.close()
