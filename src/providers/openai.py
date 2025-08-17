@@ -9,7 +9,7 @@ import asyncio
 import openai
 from openai import AsyncOpenAI
 
-from .base import BaseProvider, ModelInfo, ChatRequest, ChatResponse, EmbeddingRequest, EmbeddingResponse, ProviderError
+from .base import BaseProvider, ModelInfo, ChatRequest, ChatResponse, ChatStreamResponse, EmbeddingRequest, EmbeddingResponse, ProviderError
 from ..utils.cache import async_cache
 
 
@@ -172,7 +172,7 @@ class OpenAIProvider(BaseProvider):
         except Exception as e:
             raise ProviderError(f"OpenAI API error: {str(e)}", status_code=500, provider="openai")
     
-    async def chat_completion_stream(self, request: ChatRequest) -> AsyncGenerator[str, None]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncGenerator[ChatStreamResponse, None]:
         """Generate streaming chat completion using OpenAI API."""
         if not self.is_model_supported(request.model):
             raise ProviderError(f"Model {request.model} not supported by OpenAI", provider="openai")
@@ -208,14 +208,14 @@ class OpenAIProvider(BaseProvider):
             stream = await self.client.chat.completions.create(**chat_params)
             
             async for chunk in stream:
-                # Convert chunk to SSE format
+                # Convert chunk to ChatStreamResponse format
                 if chunk.choices and chunk.choices[0].delta is not None:
-                    data = {
-                        'id': chunk.id,
-                        'object': chunk.object,
-                        'created': chunk.created,
-                        'model': chunk.model,
-                        'choices': [{
+                    response_chunk = ChatStreamResponse(
+                        id=chunk.id,
+                        object=chunk.object,
+                        created=chunk.created,
+                        model=chunk.model,
+                        choices=[{
                             'index': choice.index,
                             'delta': {
                                 'role': choice.delta.role,
@@ -223,29 +223,23 @@ class OpenAIProvider(BaseProvider):
                             } if choice.delta else {},
                             'finish_reason': choice.finish_reason
                         } for choice in chunk.choices]
-                    }
-                    yield f"data: {json.dumps(data)}\n\n"
+                    )
+                    yield response_chunk
                 
                 # Handle final chunk with usage
                 if hasattr(chunk, 'usage') and chunk.usage:
-                    data = {
-                        'id': chunk.id,
-                        'object': chunk.object,
-                        'created': chunk.created,
-                        'model': chunk.model,
-                        'choices': [{
+                    final_chunk = ChatStreamResponse(
+                        id=chunk.id,
+                        object=chunk.object,
+                        created=chunk.created,
+                        model=chunk.model,
+                        choices=[{
                             'index': choice.index,
                             'delta': {},
                             'finish_reason': choice.finish_reason
-                        } for choice in chunk.choices],
-                        'usage': {
-                            'prompt_tokens': chunk.usage.prompt_tokens,
-                            'completion_tokens': chunk.usage.completion_tokens,
-                            'total_tokens': chunk.usage.total_tokens
-                        }
-                    }
-                    yield f"data: {json.dumps(data)}\n\n"
-                    yield "data: [DONE]\n\n"
+                        } for choice in chunk.choices]
+                    )
+                    yield final_chunk
                 
         except openai.APIStatusError as e:
             raise ProviderError(f"OpenAI API error: {str(e)}", status_code=e.status_code, provider="openai")
@@ -294,6 +288,11 @@ class OpenAIProvider(BaseProvider):
             return True
         except Exception:
             return False
+    
+    async def chat_completion_stream_fast(self, request: ChatRequest):
+        """OpenAI does not have a native fast streaming mode - use regular streaming."""
+        _ = request  # Mark parameter as intentionally unused
+        raise ProviderError("OpenAI does not support fast streaming mode", provider="openai", status_code=501)
     
     async def close(self):
         """Clean up resources."""

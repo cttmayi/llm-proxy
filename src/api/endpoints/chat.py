@@ -54,7 +54,7 @@ def create_chat_router(provider_factory: ProviderFactory) -> APIRouter:
         """Create a chat completion (streaming or non-streaming based on request.stream)."""
         try:
             provider = provider_factory.get_provider_for_model(request.model)
-            
+
             chat_request = ChatRequest(
                 model=request.model,
                 messages=[ChatMessage(role=msg["role"], content=msg["content"]) for msg in request.messages],
@@ -69,7 +69,7 @@ def create_chat_router(provider_factory: ProviderFactory) -> APIRouter:
             if request.stream:
                 async def generate_stream() -> AsyncGenerator[str, None]:
                     async for chunk in provider.chat_completion_stream(chat_request):
-                        yield chunk
+                        yield f"data: {json.dumps(chunk.model_dump())}\n\n"
                 
                 return StreamingResponse(
                     generate_stream(),
@@ -100,14 +100,9 @@ def create_chat_router(provider_factory: ProviderFactory) -> APIRouter:
     @router.post("/messages")
     async def create_claude_message(request: ChatCompletionRequest):
         """Create a Claude-native message (compatible with Anthropic API)."""
-        if not request.model.startswith("claude"):
-            raise HTTPException(
-                status_code=400,
-                detail="This endpoint only supports Claude models"
-            )
         
         try:
-            provider = provider_factory.get_provider('claude')
+            provider = provider_factory.get_provider_for_model(request.model)
             
             chat_request = ChatRequest(
                 model=request.model,
@@ -120,9 +115,9 @@ def create_chat_router(provider_factory: ProviderFactory) -> APIRouter:
             
             if request.stream:
                 async def generate_stream() -> AsyncGenerator[str, None]:
-                    async for chunk in provider.chat_completion_stream(chat_request):
+                    async for chunk in provider.chat_completion_stream_fast(chat_request):
                         yield chunk
-                
+
                 return StreamingResponse(
                     generate_stream(),
                     media_type="text/event-stream",
@@ -133,6 +128,7 @@ def create_chat_router(provider_factory: ProviderFactory) -> APIRouter:
                         "X-Accel-Buffering": "no"
                     }
                 )
+
             else:
                 response = await provider.chat_completion(chat_request)
                 

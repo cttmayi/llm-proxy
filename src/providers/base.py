@@ -44,6 +44,15 @@ class ChatResponse(BaseModel):
     usage: Dict[str, Any]
 
 
+class ChatStreamResponse(BaseModel):
+    """Chat completion streaming response chunk."""
+    id: str
+    object: str
+    created: int
+    model: str
+    choices: List[Dict[str, Any]]
+
+
 class EmbeddingRequest(BaseModel):
     """Embedding request."""
     model: str
@@ -86,10 +95,15 @@ class BaseProvider(ABC):
         pass
     
     @abstractmethod
-    async def chat_completion_stream(self, request: ChatRequest) -> AsyncGenerator[str, None]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncGenerator[ChatStreamResponse, None]:
         """Generate streaming chat completion."""
         pass
     
+    @abstractmethod
+    async def chat_completion_stream_fast(self, request: ChatRequest):
+        """Generate streaming chat completion (fast version)."""
+        pass
+
     @abstractmethod
     async def create_embeddings(self, request: EmbeddingRequest) -> EmbeddingResponse:
         """Create embeddings for text."""

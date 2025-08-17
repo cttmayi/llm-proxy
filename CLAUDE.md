@@ -4,21 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Quick Start Commands
 
-# Run the server
+### Install dependencies
+uv pip install -r requirements.txt
+
+### Run the server
 ./scripts/run_server.sh
 
-# Run tests
+### Run tests
 ./scripts/run_tests.sh
 pytest tests/unit -v                    # Unit tests only
 pytest tests/integration -v             # Integration tests only
 pytest tests/ --cov=src --cov-report=html  # With coverage
 
-# Quick functionality test
+### Quick functionality test
 ./scripts/run_test_quick.sh
 
-# Comprehensive testing
+### Comprehensive testing
 ./scripts/run_test_models.sh
-```
 
 ## Architecture Overview
 

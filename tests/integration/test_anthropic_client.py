@@ -5,8 +5,8 @@ import pytest
 import httpx
 from anthropic import Anthropic, AsyncAnthropic
 
-from src.main import app
-
+base_url = "http://127.0.0.1:8000"
+api_key = "test-key"
 
 class TestAnthropicClientIntegration:
     """Test proxy functionality using the official Anthropic Python client."""
@@ -15,24 +15,22 @@ class TestAnthropicClientIntegration:
     def anthropic_client(self):
         """Create an Anthropic client configured to use the proxy."""
         return Anthropic(
-            base_url="http://test/v1",
-            api_key="test-key",
-            http_client=httpx.Client(app=app, base_url="http://test")
+            base_url=base_url,
+            api_key=api_key,
         )
     
     @pytest.fixture
     def async_anthropic_client(self):
         """Create an async Anthropic client."""
         return AsyncAnthropic(
-            base_url="http://test/v1",
-            api_key="test-key",
-            http_client=httpx.AsyncClient(app=app, base_url="http://test")
+            base_url=base_url,
+            api_key=api_key,
         )
     
     def test_claude_messages_sync(self, anthropic_client):
         """Test synchronous Claude messages with Anthropic client."""
         response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=100,
             messages=[
                 {"role": "user", "content": "Hello, Claude!"}
@@ -47,7 +45,7 @@ class TestAnthropicClientIntegration:
     def test_claude_messages_with_system_prompt(self, anthropic_client):
         """Test Claude messages with system prompt."""
         response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=100,
             system="You are a helpful assistant specialized in mathematics.",
             messages=[
@@ -63,7 +61,7 @@ class TestAnthropicClientIntegration:
     def test_claude_messages_with_temperature(self, anthropic_client):
         """Test Claude messages with temperature parameter."""
         response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=100,
             temperature=0.7,
             messages=[
@@ -78,7 +76,7 @@ class TestAnthropicClientIntegration:
     def test_claude_messages_multi_turn(self, anthropic_client):
         """Test multi-turn conversation with Claude."""
         response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=100,
             messages=[
                 {"role": "user", "content": "What is the capital of France?"},
@@ -96,7 +94,7 @@ class TestAnthropicClientIntegration:
     async def test_claude_messages_async(self, async_anthropic_client):
         """Test asynchronous Claude messages with Anthropic client."""
         response = await async_anthropic_client.messages.create(
-            model="claude-3-5-sonnet",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=100,
             messages=[
                 {"role": "user", "content": "Hello, async Claude!"}
@@ -112,7 +110,7 @@ class TestAnthropicClientIntegration:
     async def test_claude_messages_streaming_async(self, async_anthropic_client):
         """Test async streaming Claude messages."""
         stream = await async_anthropic_client.messages.create(
-            model="claude-3-5-sonnet",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=100,
             messages=[
                 {"role": "user", "content": "Tell me a short story."}
@@ -133,7 +131,7 @@ class TestAnthropicClientIntegration:
     def test_claude_haiku_model(self, anthropic_client):
         """Test Claude Haiku model."""
         response = anthropic_client.messages.create(
-            model="claude-3-5-haiku",
+            model="claude-3-5-haiku-20241022",
             max_tokens=50,
             messages=[
                 {"role": "user", "content": "What is AI?"}
@@ -148,7 +146,7 @@ class TestAnthropicClientIntegration:
     def test_claude_opus_model(self, anthropic_client):
         """Test Claude Opus model."""
         response = anthropic_client.messages.create(
-            model="claude-3-opus",
+            model="claude-3-opus-20240229",
             max_tokens=50,
             messages=[
                 {"role": "user", "content": "Explain quantum computing"}
@@ -163,7 +161,7 @@ class TestAnthropicClientIntegration:
     def test_claude_parameters_handling(self, anthropic_client):
         """Test various Claude API parameters."""
         response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=150,
             temperature=0.8,
             top_p=0.9,
