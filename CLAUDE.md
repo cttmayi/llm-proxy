@@ -9,9 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./scripts/setup.sh
 
 # Run the server
+source .venv/bin/activate
 python src/main.py --config config/config.json
 
 # Run with environment variables only
+source .venv/bin/activate
 python src/main.py
 
 # Run tests
