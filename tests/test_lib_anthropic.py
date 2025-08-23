@@ -49,7 +49,7 @@ def test_anthropic_with_base_url(base_url=None, stream=False):
 
 
 anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-anthropic_base_url = "http://localhost:8080/anthropic"
+anthropic_base_url = "http://localhost:8899/anthropic"
 
 
 def main():

@@ -5,7 +5,7 @@
 
 set -e
 
-BASE_URL="http://localhost:8000"
+BASE_URL="http://localhost:8899/openai"
 
 # Colors
 GREEN='\033[0;32m'
@@ -23,23 +23,6 @@ error() {
 echo "🚀 LLM Proxy Quick Test"
 echo "======================"
 
-# Check if server is running
-if ! curl -s --max-time 3 "$BASE_URL/health" > /dev/null 2>&1; then
-    echo "Server not running. Start with:"
-    echo "  source ./.venv/bin/activate"
-    echo "  python src/main.py --config config/config.json"
-    exit 1
-fi
-
-success "Server is running"
-
-# Test health endpoint
-echo -n "Testing health endpoint... "
-if curl -s "$BASE_URL/health" | grep -q "healthy"; then
-    success "Health check passed"
-else
-    error "Health check failed"
-fi
 
 # Test models endpoint
 echo -n "Testing models endpoint... "
@@ -88,6 +71,3 @@ curl -s "$BASE_URL/v1/models" | jq -r '.data[] | select(.id | contains("gpt-4o",
 
 echo
 echo "🎉 Quick test completed!"
-echo "   Full test: ./scripts/test_models.sh"
-echo "   Server: $BASE_URL/docs"  
-echo "   Health: $BASE_URL/health"

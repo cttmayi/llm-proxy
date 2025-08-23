@@ -46,8 +46,8 @@ LLM_PROVIDERS = {
 # Proxy settings
 PROXY_CONFIG = {
     "host": "0.0.0.0",
-    "port": 8080,
-    "log_level": "DEBUG"
+    "port": 8899,
+    "log_level": "INFO" # DEBUG, INFO
 }
 
 
@@ -78,7 +78,7 @@ def get_supported_providers() -> Dict[str, Dict[str, Any]]:
     
     return {
         name: {
-            "base_url": config.get("base_url") or config.get("endpoint", ""),
+            "base_url": config.get("base_url"),
             "configured": validate_provider_config(name)
         }
         for name, config in LLM_PROVIDERS.items()

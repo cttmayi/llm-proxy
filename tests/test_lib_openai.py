@@ -37,7 +37,7 @@ def test_openai_with_base_url(base_url=None, stream=False):
         print(f"❌ OpenAI 代理调用失败: {e}") 
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
-openai_base_url = "http://localhost:8080/openai/v1"
+openai_base_url = "http://localhost:8899/openai/v1"
 
 def main():
     

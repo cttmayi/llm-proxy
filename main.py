@@ -3,7 +3,6 @@
 LLM Proxy Server Entry Point
 """
 
-import os
 import sys
 import logging
 from proxy import Proxy
@@ -22,27 +21,23 @@ def setup_logging(level: str = "INFO"):
         ]
     )
 
-
-
 def main():
     """Main entry point"""
     print("🤖 Starting LLM Proxy Server...")
-    
+
     # Setup logging
     setup_logging(PROXY_CONFIG["log_level"])
     logger = logging.getLogger(__name__)
-    
-    
+
     # Print supported providers
     providers = get_supported_providers()
     logger.info("Supported providers:")
     for name, info in providers.items():
         status = "✅" if info["configured"] else "❌"
         logger.info(f"  {status} {name}: {info['base_url']}")
-    
+
     # Create and start proxy
     try:
-
         print(f"\n🚀 LLM Proxy Server starting on {PROXY_CONFIG['host']}:{PROXY_CONFIG['port']}")
         print("📡 Proxy is ready to route requests!")
         print("\nPress Ctrl+C to stop the server\n")
@@ -62,13 +57,13 @@ def main():
             # '--log-file', 'llm_proxy.log',
             # '--enable-dashboard',
         ]
-        
+
         try:
             # Run proxy process
             subprocess.run(cmd, check=True)
         except KeyboardInterrupt:
             print("\n\n🛑 Shutting down LLM Proxy Server...")
-    
+
     except KeyboardInterrupt:
         print("\n\n🛑 Shutting down LLM Proxy Server...")
     except Exception as e:
