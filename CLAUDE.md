@@ -2,74 +2,79 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Quick Start Commands
+## 项目概述
 
-### Install dependencies
+基于 proxy.py 的 LLM 代理服务器，根据 URL 模式将 HTTP 请求路由到不同的 LLM 提供商（OpenAI、Anthropic、Azure OpenAI）。
+
+## 架构
+
+代理使用插件架构：
+- **oproxy/config.py**: 定义 LLM 提供商配置和 URL 路由规则
+- **oproxy/plugins.py**: 拦截请求并路由到合适提供商的插件
+- **main.py**: 使用 proxy.py CLI 的服务器入口点
+
+## 环境配置 (使用 uv)
+
+### 安装依赖
+```bash
+# 安装 uv (如果未安装)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 创建虚拟环境并安装依赖
+uv venv
+source .venv/bin/activate  # Unix/macOS
+# 或 .venv\Scripts\activate  # Windows
+
 uv pip install -r requirements.txt
+```
 
-### Run the server
-./scripts/run_server.sh
+### 环境变量设置
+```bash
+# OpenAI
+export OPENAI_API_KEY="your key"
+export OPENAI_BASE_URL="your base rul"  # 可选
 
-### Run tests
-./scripts/run_tests.sh
-pytest tests/unit -v                    # Unit tests only
-pytest tests/integration -v             # Integration tests only
-pytest tests/ --cov=src --cov-report=html  # With coverage
+# Claude
+export ANTHROPIC_API_KEY="your key"
+export ANTHROPIC_BASE_URL="your base url"  # 可选
 
-### Quick functionality test
-./scripts/run_test_quick.sh
+# Azure OpenAI
+export AZURE_OPENAI_API_KEY="your key"
+export AZURE_OPENAI_BASE_URL="your base url"
+```
 
-### Comprehensive testing
-./scripts/run_test_models.sh
+## 使用命令
 
-## Architecture Overview
+### 启动服务器
+```bash
+python main.py
+```
 
-This is a **unified API proxy** that provides a single interface to multiple LLM providers (Claude, OpenAI, Azure OpenAI) with OpenAI-compatible API format.
+### 测试配置
+```bash
+python tests/test_openai_direct.py       # OpenAI 验证
+python tests/test_anthropic_direct.py    # Anthropic 验证
+```
 
-### Core Architecture
+### URL 路由
+- `http://localhost:8080/openai/v1/chat/completions` → OpenAI
+- `http://localhost:8080/anthropic/v1/messages` → Anthropic
+- `http://localhost:8080/azure/chat/completions` → Azure OpenAI
 
-- **FastAPI-based** Python application with async/await patterns
-- **Provider factory pattern** for dynamic provider instantiation
-- **Clean architecture** with separation of concerns:
-  - `src/api/endpoints/` - REST API handlers
-  - `src/providers/` - LLM provider implementations
-  - `src/config/` - Configuration management (Pydantic models)
-  - `src/api/middleware/` - Cross-cutting concerns (logging, CORS, error handling)
 
-### Key Components
+## 插件结构
 
-1. **Provider System**: Factory pattern with `BaseProvider` abstract base class
-   - `ClaudeProvider`, `OpenAIProvider`, `AzureOpenAIProvider`
-   - Auto-detection based on model names
-   - Configurable model-to-provider mapping
+LLMProxyPlugin 在 `oproxy/plugins.py` 中实现：
+- `before_routing()`
+- `routes()`
+- `handle_route()`: 
+- `_update_request_headers()`
 
-2. **Configuration**: JSON-based with environment variable fallback
-   - `config/config.json` for provider settings
-   - `config/config.dev.json` for development
-   - Environment variables with `LLM_PROXY_` prefix
+## 配置
 
-3. **API Endpoints** (OpenAI-compatible):
-   - `/v1/chat/completions` - Chat completions (streaming supported)
-   - `/v1/embeddings` - Text embeddings
-   - `/v1/models` - Available models
-   - `/health*` - Health check endpoints
+提供商配置在 `oproxy/config.py` 中定义，可通过环境变量自定义：
+- `OPENAI_BASE_URL`: 覆盖 OpenAI 端点
+- `ANTHROPIC_BASE_URL`: 覆盖 Claude 端点
+- `AZURE_OPENAI_BASE_URL`: 设置 Azure 端点
 
-### Development Workflow
-
-1. **Configuration**: Edit `config/config.json` or use environment variables for API keys
-2. **Testing**: Use provided scripts in `scripts/` directory
-3. **Code style**: Uses black (formatting), flake8 (linting), mypy (type checking)
-4. **Dependencies**: Managed via `requirements.txt` with separate dev/test dependencies
-
-### Common Model Mappings
-
-- `gpt-4o` → OpenAI
-- `claude-3-5-sonnet` → Claude
-- `text-embedding-ada-002` → OpenAI/Azure (auto-detected)
-
-### Testing Patterns
-
-- **Unit tests**: Mock provider interactions in `tests/unit/`
-- **Integration tests**: Real API tests in `tests/integration/`
-- **Test markers**: `@pytest.mark.unit`, `@pytest.mark.integration`
-- **Async testing**: pytest-asyncio with `asyncio_mode = auto`
+所有提供商配置都包含特定于每个服务的 API 端点和认证头。

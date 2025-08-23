@@ -1,440 +1,297 @@
-# LLM Proxy
+# LLM Proxy Server
 
-A unified API proxy that provides a single interface to multiple Large Language Model providers including Claude (Anthropic), OpenAI, and Azure OpenAI.
+A flexible HTTP proxy server built on `proxy.py` that routes requests to different LLM providers (OpenAI, Anthropic, Azure OpenAI) based on URL patterns.
 
 ## Features
 
-- **Unified API**: Single interface for multiple LLM providers
-- **Provider Support**: Claude, OpenAI, and Azure OpenAI
-- **OpenAI Compatibility**: Compatible with OpenAI API format
-- **Streaming Support**: Real-time streaming responses
-- **Health Monitoring**: Built-in health checks for all providers
-- **Rate Limiting**: Optional rate limiting per client
-- **Metrics Collection**: Request/response metrics and logging
-- **Flexible Configuration**: JSON configuration with environment variable support
-- **Security**: CORS support, authentication options
-
-## Architecture
-
-The project has been refactored with a clean architecture:
-
-```
-src/
-├── api/
-│   ├── endpoints/          # API endpoint handlers
-│   │   ├── chat.py        # Chat completion endpoints
-│   │   ├── embeddings.py  # Embeddings endpoints
-│   │   ├── models.py      # Models listing endpoints
-│   │   └── health.py      # Health check endpoints
-│   └── middleware/        # Request/response middleware
-├── providers/             # LLM provider implementations
-│   ├── base.py            # Base provider interface
-│   ├── claude.py          # Claude provider
-│   ├── openai.py          # OpenAI provider
-│   ├── azure.py           # Azure OpenAI provider
-│   └── factory.py         # Provider factory pattern
-├── config/               # Configuration management
-│   ├── models.py          # Pydantic configuration models
-│   └── loader.py          # Configuration loader
-└── main.py               # FastAPI application
-```
+- 🎯 **Multi-Provider Support**: Routes requests to OpenAI, Anthropic, or Azure OpenAI
+- 🔧 **Configurable Routing**: URL-based routing with customizable patterns
+- 🔒 **API Key Management**: Secure handling of provider API keys
+- 🚀 **Easy Setup**: Simple configuration via environment variables
+- 📊 **Health Checks**: Built-in testing utilities for each provider
 
 ## Quick Start
 
-### 1. Installation
+### Prerequisites
+- Python 3.8+
+- [uv](https://astral.sh/uv) (recommended for dependency management)
 
+### Installation
+
+1. **Install uv** (if not already installed):
 ```bash
-# Clone the repository
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+2. **Setup the project**:
+```bash
+# Clone and navigate to the project
 git clone <repository-url>
-cd llm-proxy
+cd llm-proxy-server
 
-# Run setup script
-./scripts/setup.sh
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # Unix/macOS
+# or .venv\Scripts\activate  # Windows
+
+uv pip install -r requirements.txt
 ```
 
-### 2. Configuration
-
-Create a configuration file or use environment variables:
-
-Create `config/config.json`:
-
-```json
-{
-  "providers": {
-    "claude": {
-      "enabled": true,
-      "api_key": "your-claude-api-key",
-      "base_url": "https://api.anthropic.com"
-    },
-    "openai": {
-      "enabled": true,
-      "api_key": "your-openai-api-key"
-    },
-    "azure": {
-      "enabled": false,
-      "api_key": "your-azure-key",
-      "endpoint": "https://your-resource.openai.azure.com"
-    }
-  },
-  "model_mapping": {
-    "gpt-4o": "openai",
-    "claude-3-5-sonnet": "claude",
-    "gpt-4": "azure"
-  }
-}
-```
-
-### 3. Run the Server
-
+3. **Configure API Keys**:
 ```bash
-# Activate virtual environment
-source venv/bin/activate
+# OpenAI
+export OPENAI_API_KEY="your-openai-key"
+export OPENAI_BASE_URL="https://api.openai.com"  # Optional
 
-# Run the server
-python src/main.py --config config/config.json
+# Anthropic (Claude)
+export ANTHROPIC_API_KEY="your-anthropic-key"
+export ANTHROPIC_BASE_URL="https://api.anthropic.com"  # Optional
 
-# Or with environment variables
-python src/main.py
-
-# Or with custom host/port
-python src/main.py --host 0.0.0.0 --port 8080
+# Azure OpenAI
+export AZURE_OPENAI_API_KEY="your-azure-key"
+export AZURE_OPENAI_BASE_URL="https://your-resource.openai.azure.com"
 ```
 
-## API Usage
+### Usage
 
-### Chat Completions
-
+#### Start the Server
 ```bash
-# Using curl
-curl -X POST http://localhost:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4o",
-    "messages": [
-      {"role": "user", "content": "Hello, how are you?"}
-    ]
-  }'
-
-# Using OpenAI client
-from openai import OpenAI
-
-client = OpenAI(
-    base_url="http://localhost:8000/v1",
-    api_key="dummy-key"
-)
-
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "Hello!"}]
-)
+python main.py
 ```
 
-### Claude Native Messages
+The server will start on `http://localhost:8080` by default.
 
-The `/messages` endpoint provides native Claude API compatibility for Claude models:
+#### Making Requests
 
+**OpenAI API**:
 ```bash
-# Basic Claude message
-curl -X POST http://localhost:8000/v1/messages \
+curl -X POST http://localhost:8080/openai/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
   -d '{
-    "model": "claude-3-5-sonnet",
-    "messages": [
-      {"role": "user", "content": "Hello, Claude!"}
-    ],
-    "max_tokens": 1024
-  }'
-
-# Streaming Claude message
-curl -X POST http://localhost:8000/v1/messages \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-3-5-sonnet",
-    "messages": [
-      {"role": "user", "content": "Tell me a story"}
-    ],
-    "max_tokens": 2048,
-    "stream": true
-  }'
-
-# Claude with system prompt
-curl -X POST http://localhost:8000/v1/messages \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-3-5-sonnet",
-    "messages": [
-      {"role": "user", "content": "What is the capital of France?"}
-    ],
-    "max_tokens": 512,
-    "temperature": 0.7
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
-### Streaming Responses
-
+**Anthropic API**:
 ```bash
-curl -X POST http://localhost:8000/v1/chat/completions \
+curl -X POST http://localhost:8080/anthropic/v1/messages \
   -H "Content-Type: application/json" \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
   -d '{
-    "model": "claude-3-5-sonnet",
-    "messages": [{"role": "user", "content": "Tell me a story"}],
-    "stream": true
+    "model": "claude-3-sonnet-20240229",
+    "max_tokens": 1000,
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
-### Embeddings
-
+**Azure OpenAI API**:
 ```bash
-curl -X POST http://localhost:8000/v1/embeddings \
+curl -X POST http://localhost:8080/azure/chat/completions \
   -H "Content-Type: application/json" \
+  -H "api-key: $AZURE_OPENAI_API_KEY" \
   -d '{
-    "model": "text-embedding-ada-002",
-    "input": "The quick brown fox jumps over the lazy dog"
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
-```
-
-### List Models
-
-```bash
-curl http://localhost:8000/v1/models
 ```
 
 ## Configuration
 
-### Providers
+### URL Routing
 
-#### Claude (Anthropic)
-```json
-{
-  "claude": {
-    "enabled": true,
-    "api_key": "sk-ant-...",
-    "base_url": "https://api.anthropic.com",
-    "api_version": "2023-06-01"
-  }
-}
-```
+The proxy routes requests based on URL patterns:
 
-#### OpenAI
-```json
-{
-  "openai": {
-    "enabled": true,
-    "api_key": "sk-...",
-    "base_url": "https://api.openai.com",
-    "organization": "org-..."  # optional
-  }
-}
-```
+| URL Pattern | Provider |
+|-------------|----------|
+| `/openai/v1/chat/completions` | OpenAI |
+| `/anthropic/v1/messages` | Anthropic |
+| `/azure/chat/completions` | Azure OpenAI |
 
-#### Azure OpenAI
-```json
-{
-  "azure": {
-    "enabled": true,
-    "api_key": "...",
-    "endpoint": "https://your-resource.openai.azure.com",
-    "api_version": "2024-10-21"
-  }
-}
-```
+### Environment Variables
 
-### Model Mapping
-
-Configure which models map to which providers:
-
-```json
-{
-  "model_mapping": {
-    "gpt-4o": "openai",
-    "claude-3-5-sonnet": "claude",
-    "gpt-4": "azure"
-  }
-}
-```
-
-### Server Configuration
-
-```json
-{
-  "server": {
-    "host": "0.0.0.0",
-    "port": 8000,
-    "log_level": "INFO",
-    "workers": 1
-  }
-}
-```
-
-### Features
-
-```json
-{
-  "features": {
-    "enable_streaming": true,
-    "enable_caching": false,
-    "enable_metrics": true,
-    "enable_rate_limiting": false,
-    "max_requests_per_minute": 60
-  }
-}
-```
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key | Yes (for OpenAI) |
+| `OPENAI_BASE_URL` | Custom OpenAI endpoint | No |
+| `ANTHROPIC_API_KEY` | Anthropic API key | Yes (for Anthropic) |
+| `ANTHROPIC_BASE_URL` | Custom Anthropic endpoint | No |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI key | Yes (for Azure) |
+| `AZURE_OPENAI_BASE_URL` | Azure OpenAI endpoint | Yes (for Azure) |
 
 ## Testing
 
-### Run All Tests
+### Validate Provider Configuration
+
+Test each provider individually:
 
 ```bash
-./scripts/run_tests.sh
+# Test OpenAI
+python tests/test_openai_direct.py
+
+# Test Anthropic
+python tests/test_anthropic_direct.py
+
+# Test Azure OpenAI
+python tests/test_azure_direct.py  # if available
 ```
 
-### Run Specific Test Suites
+### Health Checks
+
+The proxy includes built-in health checks:
 
 ```bash
-# Unit tests
-pytest tests/unit -v
+# Check if the proxy is running
+curl http://localhost:8080/health
 
-# Integration tests
-pytest tests/integration -v
+# Check OpenAI connectivity
+curl http://localhost:8080/openai/health
 
-# With coverage
-pytest tests/ --cov=src --cov-report=html
+# Check Anthropic connectivity
+curl http://localhost:8080/anthropic/health
 ```
 
-### Test Configuration
+## Architecture
 
-The test suite includes:
-- **Unit Tests**: Individual provider tests
-- **Integration Tests**: API endpoint tests
-- **Mock Providers**: Test without real API calls
-- **Coverage Reports**: HTML coverage reports
+### Plugin System
 
-## Health Checks
+The proxy uses a plugin-based architecture:
 
-The proxy provides multiple health check endpoints:
+- **`oproxy/config.py`**: Provider configurations and routing rules
+- **`oproxy/plugins.py`**: Request interception and routing logic
+- **`main.py`**: Server entry point using proxy.py CLI
 
-- `GET /health` - Basic health status
-- `GET /health/ready` - Kubernetes readiness probe
-- `GET /health/live` - Kubernetes liveness probe
-- `GET /health/detailed` - Detailed provider health status
+### Core Components
 
-## Security
+1. **LLMProxyPlugin**: Main plugin class that handles:
+   - Request routing based on URL patterns
+   - Header management for different providers
+   - API key injection
 
-### Authentication
+2. **ProviderConfig**: Configuration management for:
+   - API endpoints
+   - Authentication headers
+   - Custom base URLs
 
-Enable API key authentication:
+## Development
 
-```json
-{
-  "security": {
-    "enable_auth": true,
-    "api_key_header": "X-API-Key"
-  }
-}
+### Project Structure
+```
+llm-proxy-server/
+├── main.py              # Server entry point
+├── oproxy/
+│   ├── __init__.py
+│   ├── config.py        # Provider configurations
+│   └── plugins.py       # Proxy plugins
+├── tests/
+│   ├── test_openai_direct.py
+│   ├── test_anthropic_direct.py
+│   └── test_azure_direct.py
+├── requirements.txt     # Dependencies
+├── CLAUDE.md           # Claude-specific instructions
+└── README.md           # This file
 ```
 
-### CORS
+### Adding New Providers
 
-Configure CORS origins:
+To add support for a new LLM provider:
 
-```json
-{
-  "security": {
-    "enable_cors": true,
-    "allowed_origins": ["https://yourdomain.com"]
-  }
-}
-```
+1. **Update `oproxy/config.py`**:
+   ```python
+   # Add provider configuration
+   "new_provider": {
+       "base_url": "https://api.newprovider.com",
+       "headers": {
+           "Authorization": f"Bearer {os.getenv('NEW_PROVIDER_KEY')}"
+       }
+   }
+   ```
 
-## Environment Variables
+2. **Update routing in `oproxy/plugins.py`**:
+   ```python
+   # Add new route pattern
+   "/new-provider/v1/chat": "new_provider"
+   ```
 
-All configuration can be set via environment variables:
+3. **Add environment variable**:
+   ```bash
+   export NEW_PROVIDER_KEY="your-key"
+   ```
 
+### Customization
+
+#### Custom Base URLs
+Override provider endpoints using environment variables:
 ```bash
-# Provider API keys
-CLAUDE_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
-AZURE_OPENAI_API_KEY=...
-AZURE_OPENAI_ENDPOINT=...
-
-# Server settings
-LLM_PROXY_HOST=0.0.0.0
-LLM_PROXY_PORT=8000
-LLM_PROXY_LOG_LEVEL=INFO
-
-# Model mapping
-LLM_PROXY_MODEL_MAPPING=gpt-4o=openai,claude-3-5-sonnet=claude
+export OPENAI_BASE_URL="https://custom-openai-endpoint.com"
+export ANTHROPIC_BASE_URL="https://custom-anthropic-endpoint.com"
 ```
 
-## Docker Deployment
+#### Custom Ports
+Modify the default port (8080) in `main.py`:
+```python
+# Change from:
+if __name__ == "__main__":
+    main()
 
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-
-EXPOSE 8000
-CMD ["python", "src/main.py"]
+# To:
+if __name__ == "__main__":
+    import sys
+    sys.argv = ["proxy.py", "--port", "9000"]
+    main()
 ```
-
-## Monitoring
-
-### Metrics
-
-When `enable_metrics` is true, metrics are collected:
-- Request counts
-- Response times
-- Error rates
-- Status code distribution
-
-### Logging
-
-Structured logging with:
-- Request IDs for tracking
-- Sensitive data redaction
-- Provider-specific error logging
-- Performance metrics
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Provider Authentication Errors**
-   - Check API keys in configuration
-   - Verify provider endpoints are accessible
+1. **Connection Refused**
+   - Check if the server is running: `lsof -i :8080`
+   - Verify the port isn't already in use
 
-2. **Model Not Found**
-   - Check `model_mapping` configuration
-   - Ensure provider supports the requested model
+2. **Authentication Errors**
+   - Ensure API keys are properly set in environment variables
+   - Check for typos in the key names
 
-3. **Rate Limiting**
-   - Adjust `max_requests_per_minute` in configuration
-   - Check provider rate limits
-
-4. **CORS Issues**
-   - Configure `allowed_origins` appropriately
-   - Enable CORS in security settings
+3. **Routing Issues**
+   - Verify URL patterns match exactly
+   - Check the proxy logs for routing decisions
 
 ### Debug Mode
 
-Run with debug logging:
-
+Enable verbose logging:
 ```bash
-python src/main.py --log-level DEBUG
+python main.py --log-level DEBUG
+```
+
+### Testing Connectivity
+
+Test direct provider connectivity:
+```bash
+# Test OpenAI
+python -c "import openai; openai.api_key='your-key'; print(openai.Model.list())"
+
+# Test Anthropic
+python -c "import anthropic; client=anthropic.Anthropic(api_key='your-key'); print(client.messages.create(model='claude-3-sonnet', max_tokens=10, messages=[{'role':'user','content':'test'}]))"
 ```
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Add tests for new functionality
-4. Run test suite: `./scripts/run_tests.sh`
-5. Submit a pull request
+3. Make your changes
+4. Add tests for new providers
+5. Run existing tests
+6. Submit a pull request
 
 ## License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For issues and questions:
+- Check the [troubleshooting section](#troubleshooting)
+- Review [existing issues](https://github.com/your-repo/issues)
+- Create a new issue with detailed information
