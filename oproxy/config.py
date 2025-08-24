@@ -47,7 +47,7 @@ LLM_PROVIDERS = {
 PROXY_CONFIG = {
     "host": "0.0.0.0",
     "port": 8899,
-    "log_level": "INFO" # DEBUG, INFO
+    "log_level": "DEBUG" # DEBUG, INFO
 }
 
 
